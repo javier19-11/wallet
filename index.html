@@ -386,13 +386,29 @@ let estado = {
 };
 
 /* ---------- guardado ---------- */
-let pendiente = null;
 function guardar(){
-  clearTimeout(pendiente);
-  pendiente = setTimeout(() => {
-    try { localStorage.setItem(CLAVE, JSON.stringify(estado)); avisoGuardado(); }
-    catch(e){ avisoGuardado('No se pudo guardar en este navegador'); }
-  }, 400);
+  try {
+    localStorage.setItem(CLAVE, JSON.stringify(estado));
+    // releer para confirmar que de verdad quedo escrito
+    if(!localStorage.getItem(CLAVE)) throw new Error('no persiste');
+    avisoGuardado();
+  } catch(e){
+    avisoGuardado('⚠ Este navegador no está guardando. Usa "Bajar respaldo".');
+  }
+}
+
+// guardar de nuevo al bloquear el telefono, cambiar de app o cerrar
+['visibilitychange','pagehide','blur'].forEach(ev =>
+  window.addEventListener(ev, () => { try{ localStorage.setItem(CLAVE, JSON.stringify(estado)); }catch(e){} })
+);
+
+// aviso claro si el almacenamiento esta bloqueado (modo privado, cookies bloqueadas)
+function revisarAlmacen(){
+  try{
+    localStorage.setItem('__prueba__','1');
+    localStorage.removeItem('__prueba__');
+    return true;
+  }catch(e){ return false; }
 }
 function cargar(){
   try{
@@ -703,6 +719,13 @@ document.getElementById('archivo').addEventListener('change', e => {
 });
 
 (function init(){
+  if(!revisarAlmacen()){
+    document.querySelector('.wrap').insertAdjacentHTML('afterbegin',
+      '<div class="tarjeta" style="border-color:var(--alert);margin-bottom:18px">'+
+      '<b>Este navegador no permite guardar.</b><br>'+
+      'Suele pasar en <b>navegación privada</b> de Safari o con las cookies bloqueadas. '+
+      'Cierra las pestañas privadas y abre el tablero desde el ícono de la pantalla de inicio.</div>');
+  }
   try{ cargar(); }catch(e){ console.warn('Arranco en limpio', e); }
   $('#ingreso').value = estado.ingreso||'';
   $('#modelo').value = estado.modelo;
